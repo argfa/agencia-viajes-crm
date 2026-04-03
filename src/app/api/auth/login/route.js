@@ -39,13 +39,11 @@ export async function POST(request) {
 
     const response = NextResponse.json({ success: true }, { status: 200 })
     
-    // Set httpOnly cookie
     response.cookies.set('auth_token', jwt, {
       httpOnly: true,
       secure: false, // Permitir HTTP en red local
       sameSite: 'lax', // Lax previene problemas de redirección cruzada
-
-      maxAge: 60 * 60 * 12, // 12 hours
+      // Sin maxAge: esto la convierte estrictamente en una 'Session Cookie'
       path: '/'
     })
 
