@@ -104,8 +104,8 @@ export default function LoginPage() {
         nombre: nombre.toUpperCase(), 
         cedula, 
         fecha_nacimiento: fechaNacimiento, 
-        direccion: direccionCompleta, 
-        email, 
+        direccion: direccionCompleta.toUpperCase(), 
+        email: email.toLowerCase(), 
         password 
       })
     })
@@ -213,12 +213,25 @@ export default function LoginPage() {
               </div>
               <div className="input-group" style={{flex: 1, minWidth: '150px'}}>
                 <label>Confirmar Contraseña</label>
-                <div style={{display:'flex', width:'100%', position: 'relative'}}>
-                  <input type={showConfirmPassword ? "text" : "password"} required value={confirmPassword} onChange={e => setConfirmPassword(e.target.value)} placeholder="Repetir misma clave" style={{flex: 1, paddingRight: '40px'}} />
-                  <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)} style={{position: 'absolute', right: '5px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem'}} title={showConfirmPassword ? "Ocultar" : "Mostrar"}>
-                    {showConfirmPassword ? '👁️' : '🔐'}
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className={`w-full px-4 py-3 bg-[#e8eced] border ${password && confirmPassword && password === confirmPassword ? 'border-green-500' : 'border-[#d0d7de]'} rounded-md focus:outline-none focus:ring-2 focus:ring-[#E85D22] text-[#2c3e50] font-medium transition-colors pr-10`}
+                    required
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-3 text-gray-500 hover:text-gray-700 focus:outline-none"
+                  >
+                    {showConfirmPassword ? '🙈' : '👁️'}
                   </button>
                 </div>
+                {password && confirmPassword && password === confirmPassword && (
+                  <p className="text-green-600 font-semibold text-xs mt-1 absolute">✓ Las contraseñas coinciden</p>
+                )}
               </div>
             </div>
             

@@ -42,8 +42,9 @@ export async function POST(request) {
     // Set httpOnly cookie
     response.cookies.set('auth_token', jwt, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'strict',
+      secure: false, // Permitir HTTP en red local
+      sameSite: 'lax', // Lax previene problemas de redirección cruzada
+
       maxAge: 60 * 60 * 12, // 12 hours
       path: '/'
     })
