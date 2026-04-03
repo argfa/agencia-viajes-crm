@@ -1,0 +1,56 @@
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model ClientRecord {
+  id                 String   @id @default(uuid())
+  destino            String
+  fecha              DateTime
+  nombre             String
+  apellido           String
+  cedula             String
+  monto_total        Float
+  reserva_inicial    Float
+  abonos             Float
+  restante_por_pagar Float
+  metodo_pago        String
+  vendedor           String
+  
+  cantidad_pax       Int      @default(1)
+  acompanantes       String   @default("")
+  
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  receipts           Receipt[] // Relacion 1 a muchos
+}
+
+model Receipt {
+  id               String       @id @default(cuid())
+  clientRecordId   String
+  client           ClientRecord @relation(fields: [clientRecordId], references: [id], onDelete: Cascade)
+  type             String       // "CONTRATO" o "ABONO"
+  monto_involucrado Float
+  fecha_emision    DateTime     @default(now())
+}
+
+model DestinoPrecargado {
+  id    String @id @default(uuid())
+  name  String @unique
+}
+
+model User {
+  id               String   @id @default(uuid())
+  nombre           String
+  cedula           String   @unique
+  fecha_nacimiento DateTime
+  direccion        String
+  email            String   @unique
+  password         String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
