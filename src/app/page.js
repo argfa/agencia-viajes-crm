@@ -1,8 +1,17 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 export default function LoginPage() {
+  // Anti-BFCache: Forzar recarga si se usa el botón Atrás
+  useEffect(() => {
+    const handlePageShow = (e) => {
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener('pageshow', handlePageShow);
+    return () => window.removeEventListener('pageshow', handlePageShow);
+  }, []);
+
   const [isLogin, setIsLogin] = useState(true)
   
   const [cedula, setCedula] = useState('')
@@ -213,24 +222,31 @@ export default function LoginPage() {
               </div>
               <div className="input-group" style={{flex: 1, minWidth: '150px'}}>
                 <label>Confirmar Contraseña</label>
-                <div className="relative">
+                <div style={{display:'flex', width:'100%', position: 'relative'}}>
                   <input
                     type={showConfirmPassword ? "text" : "password"}
+                    required
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
-                    className={`w-full px-4 py-3 bg-[#e8eced] border ${password && confirmPassword && password === confirmPassword ? 'border-green-500' : 'border-[#d0d7de]'} rounded-md focus:outline-none focus:ring-2 focus:ring-[#E85D22] text-[#2c3e50] font-medium transition-colors pr-10`}
-                    required
+                    style={{
+                      flex: 1, 
+                      paddingRight: '40px',
+                      ...(password && confirmPassword && password === confirmPassword ? { borderColor: 'var(--success)', borderWidth: '2px' } : {})
+                    }}
                   />
                   <button 
                     type="button" 
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-3 text-gray-500 hover:text-gray-700 focus:outline-none"
+                    style={{position: 'absolute', right: '8px', top: '50%', transform: 'translateY(-50%)', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.2rem'}}
+                    title={showConfirmPassword ? "Ocultar" : "Mostrar"}
                   >
-                    {showConfirmPassword ? '🙈' : '👁️'}
+                    {showConfirmPassword ? '👁️' : '🔐'}
                   </button>
                 </div>
                 {password && confirmPassword && password === confirmPassword && (
-                  <p className="text-green-600 font-semibold text-xs mt-1 absolute">✓ Las contraseñas coinciden</p>
+                  <div style={{position: 'relative'}}>
+                    <p style={{color: 'var(--success)', fontWeight: 'bold', fontSize: '0.8rem', marginTop: '0.2rem', position: 'absolute'}}>✓ Las contraseñas coinciden</p>
+                  </div>
                 )}
               </div>
             </div>

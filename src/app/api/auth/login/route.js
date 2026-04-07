@@ -20,13 +20,13 @@ export async function POST(request) {
     })
 
     if (!user) {
-      return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 })
+      return NextResponse.json({ error: '¡Atención! Este usuario no existe o no está registrado en el sistema.' }, { status: 404 })
     }
 
     const isValid = await bcrypt.compare(password, user.password)
 
     if (!isValid) {
-      return NextResponse.json({ error: 'Credenciales inválidas' }, { status: 401 })
+      return NextResponse.json({ error: 'Contraseña incorrecta. Intente nuevamente.' }, { status: 401 })
     }
 
     // Create JWT

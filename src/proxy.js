@@ -11,16 +11,21 @@ export async function proxy(request) {
     const token = request.cookies.get('auth_token')?.value
 
     if (!token) {
-      return NextResponse.redirect(new URL('/', request.url))
+      const response = NextResponse.redirect(new URL('/', request.url))
+      response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
+      return response
     }
 
     try {
       await jwtVerify(token, JWT_SECRET)
-      return NextResponse.next()
+      const response = NextResponse.next()
+      response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
+      return response
     } catch (e) {
       // Invalid token, redirect to login
-      response = NextResponse.redirect(new URL('/', request.url))
+      let response = NextResponse.redirect(new URL('/', request.url))
       response.cookies.delete('auth_token')
+      response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
       return response
     }
   }
@@ -31,11 +36,16 @@ export async function proxy(request) {
     if (token) {
       try {
         await jwtVerify(token, JWT_SECRET)
-        return NextResponse.redirect(new URL('/dashboard', request.url))
+        const response = NextResponse.redirect(new URL('/dashboard', request.url))
+        response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
+        return response
       } catch (e) {
         // Silently let them stay on login page if token is expired
       }
     }
+    const response = NextResponse.next()
+    response.headers.set('Cache-Control', 'no-store, max-age=0, must-revalidate')
+    return response
   }
 
   return NextResponse.next()

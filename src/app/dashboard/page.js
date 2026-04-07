@@ -6,6 +6,37 @@ import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
 
 export default function AgenciaApp() {
+  // Control estricto de navegación y Sesión
+  useEffect(() => {
+    // 1. Trampa de historial para interceptar el botón Atrás
+    window.history.pushState({ page: 'dashboard_trap' }, '');
+
+    const handlePopState = async (e) => {
+      const confirmLogout = window.confirm("¿Seguro que deseas salir? Esto cerrará tu sesión.");
+      if (confirmLogout) {
+        await fetch('/api/auth/logout', { method: 'POST' });
+        window.location.href = '/';
+      } else {
+        // Redirigir la trampa hacia adelante si el usuario canceló
+        window.history.pushState({ page: 'dashboard_trap' }, '');
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    // 2. Anti-BFCache para el botón Adelante (Navegación Fantasma)
+    const handlePageShow = (e) => {
+      // Si el navegador intentó restaurar la vista desde la memoria caché, forzamos recarga
+      if (e.persisted) window.location.reload();
+    };
+    window.addEventListener('pageshow', handlePageShow);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('pageshow', handlePageShow);
+    };
+  }, []);
+
   const [clients, setClients] = useState([])
   const [filterDestino, setFilterDestino] = useState('Todos')
   const [destinosUnicos, setDestinosUnicos] = useState([])
@@ -281,6 +312,7 @@ export default function AgenciaApp() {
   const totalPages = Math.ceil(sortedClients.length / ITEMS_PER_PAGE);
 
   const exportExcel = () => {
+    if (sortedClients.length === 0) return alert('No hay registros para exportar.');
     const exportData = sortedClients.map(c => ({
       "Destino": c.destino,
       "Fecha": new Date(c.fecha).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' }),
@@ -304,6 +336,7 @@ export default function AgenciaApp() {
   }
 
   const exportPDF = () => {
+    if (sortedClients.length === 0) return alert('No hay registros para exportar.');
     const doc = new jsPDF('landscape')
     
     const brandColor = [0, 119, 182]
@@ -540,6 +573,18 @@ export default function AgenciaApp() {
     fetchDestinos()
   }
 
+  const isFormValid = 
+    formData.destino.trim() !== '' &&
+    formData.fecha.length === 10 &&
+    formData.nombre.trim() !== '' &&
+    formData.apellido.trim() !== '' &&
+    formData.cedula.trim() !== '' &&
+    parseInt(formData.cantidad_pax) >= 1 &&
+    formData.vendedor.trim() !== '' &&
+    !isNaN(parseFloat(formData.monto_total)) && parseFloat(formData.monto_total) > 0 &&
+    (isPagoCompleto || (!isNaN(parseFloat(formData.reserva_inicial)) && parseFloat(formData.reserva_inicial) >= 0)) &&
+    (parseInt(formData.cantidad_pax) <= 1 || acompanantesList.every(ac => ac.nombre.trim() !== '' && ac.apellido.trim() !== '' && (ac.isMenor || (ac.cedula && ac.cedula.trim() !== ''))));
+
   return (
     <>
       <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.7)', padding: '1rem 2rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)'}}>
@@ -668,7 +713,7 @@ export default function AgenciaApp() {
           )}
 
           <div style={{marginTop: '2rem', textAlign: 'right'}}>
-            <button type="submit" className="btn btn-primary">Guardar Registro</button>
+            <button type="submit" className="btn btn-primary" disabled={!isFormValid} style={{ opacity: isFormValid ? 1 : 0.5, cursor: isFormValid ? 'pointer' : 'not-allowed', background: isFormValid ? 'var(--primary)' : '#95a5a6' }}>Guardar Registro</button>
           </div>
         </form>
       </div>
@@ -702,8 +747,22 @@ export default function AgenciaApp() {
         </div>
 
         <div style={{marginBottom: '1rem', display: 'flex', gap: '1rem'}}>
-          <button onClick={exportExcel} className="btn btn-secondary" style={{background: '#2d6a4f'}}>📊 Exportar Excel</button>
-          <button onClick={exportPDF} className="btn btn-secondary" style={{background: '#d00000'}}>📄 Exportar PDF</button>
+          <button 
+            onClick={exportExcel} 
+            className="btn btn-secondary" 
+            style={{background: sortedClients.length === 0 ? '#95a5a6' : '#2d6a4f', cursor: sortedClients.length === 0 ? 'not-allowed' : 'pointer', opacity: sortedClients.length === 0 ? 0.6 : 1}}
+            disabled={sortedClients.length === 0}
+          >
+            📊 Exportar Excel
+          </button>
+          <button 
+            onClick={exportPDF} 
+            className="btn btn-secondary" 
+            style={{background: sortedClients.length === 0 ? '#95a5a6' : '#d00000', cursor: sortedClients.length === 0 ? 'not-allowed' : 'pointer', opacity: sortedClients.length === 0 ? 0.6 : 1}}
+            disabled={sortedClients.length === 0}
+          >
+            📄 Exportar PDF
+          </button>
         </div>
 
         <div className="table-container">
