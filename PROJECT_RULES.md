@@ -35,6 +35,7 @@ Este documento consolida las reglas de arquitectura, diseño base, y buenas prá
 - Es fundamental mantener la coherencia financiera: **Restante por Pagar = Monto Total - Reserva Inicial - Abonos**.
 - Ante una divergencia manual de montos, el sistema levanta una "Vigilante Alert". Todo cambio contable en la interfaz debe mantener la opción de corrección automática (`Autocorregir`).
 - **Modalidades de Pagos:** Las reservas pueden tratarse como "Pago Completo" o en partes. Todas las deudas pre-existentes deben saldarse a través del mecanismo modal de **Abonos**. Cada abono generará una constancia `Receipt` automática.
+- **Seguridad Preventiva en Formularios y Botones:** Las acciones de alto riesgo (ej. guardar registro, o exportaciones PDF/Excel) **deben bloquearse físicamente en la interfaz (atributo `disabled` y diseño atenuado opaco)** si la información base está incompleta, si las tablas de clientes están vacías, o si falta capturar un dato vital numérico o asociativo.
 
 ## 4. Reglas del Código / Criterios de Modificación (Para Agentes IA)
 
@@ -43,7 +44,7 @@ Este documento consolida las reglas de arquitectura, diseño base, y buenas prá
 3. **No romper dependencias cruzadas:** Si se actualiza el esquema en `prisma/schema.prisma`, es obligatorio correr `npx prisma db push` o un proceso análogo (que respete las directrices establecidas).
 4. **Respetar el diseño Responsive:** Todos los formularios deben usar `display: grid` y la lógica de envoltura (`flex-wrap: wrap`) configurada originariamente en la hoja de estilos global.
 5. **Idioma:** Todos los textos, comentarios y nombres de variable genéricas deben priorizar el marco semántico en Español (Ej. `monto_total`, `restante_por_pagar`, `Vendedor`), ya que es un requerimiento regional del cliente.
-6. **Protección de Rutas (Middleware Deprecated):** Debido a convenciones estrictas de Next.js 16.2.2+ (Turbopack), el archivo tradicional `middleware.js` está **obsoleto**. La lógica de seguridad e intercepción de rutas debe escribirse obligatoriamente en el archivo **`src/proxy.js`**. Además, siempre que redirijas flujos, debes incluir cabeceras anti-caché (`Cache-Control: no-store, max-age=0, must-revalidate`) para evitar fallos de seguridad por el BFCache del explorador al usar los botones Adelante/Atrás.
+6. **Protección de Rutas (Middleware Deprecated y Tácticas Anti-BFCache):** Debido a convenciones estrictas de Next.js 16.2.2+ (Turbopack), `middleware.js` está **obsoleto**. La lógica SSR de intercepción debe obligatoriamente figurar en **`src/proxy.js`** anexando cabeceras de muerte (Anti-caché) (`Cache-Control: no-store, max-age=0`). A nivel Front-End (Client) dentro del Dashboard, debes inyectar obligatoriamente una **Trampa de Historial Preventiva** forzando un estado ciego (`window.history.pushState`) e interceptando los eventos `popstate` / `pageshow`, lo cual neutraliza a los botones Adelante/Atrás de los exploradores evitando pantallas zombis permitiendo forzar el relogueo/logout.
 
 ## 5. Herramientas de Administración de Base de Datos (Sysadmin)
 
@@ -63,3 +64,9 @@ npm run db:admin
 2. Al ingresar desde tu navegador, observarás pestañas etiquetadas con los Modelos principales: `User`, `ClientRecord`, `Receipt`, `DestinoPrecargado`.
 3. Dale clic a la tabla que desees modificar. Podrás crear (`Add record`), editar haciendo doble clic en una celda, o eliminar seleccionando la fila y presionando el botón "Delete".
 4. **Alerta de Seguridad (Precaución Sysadm):** Esta vía evade las reglas de validación de la aplicación de React. Cualquier borrado en cascada configurado en la DB se cumplirá silenciosamente. Por favor, realiza modificaciones aquí con cuidado.
+
+## 6. Despliegue en Producción (Infraestructura PM2)
+
+1. El despliegue de producción se orienta a servidores Linux Ubuntu, exigiendo una clonación pura del repositorio y construcción de la base de datos nativa con `npx prisma db push` tras aislar los datos dev.
+2. Todas las operaciones vitales de inicio del sistema quedan regidas bajo el supervisor en segundo plano **PM2** con un archivo maestro del proyecto `ecosystem.config.js`. Este garantizará la distribución equilibrada en el núcleo y autorreinicio vitalicio configurado con `pm2 startup`.
+3. Está total y absolutamente advertido de no subir la configuración `.env` en repositorios públicos. Los secretos deben implantarse herméticamente o vía inyección SSh/SCP en el directorio raíz del servidor final de turno.
