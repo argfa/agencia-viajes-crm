@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
+# 🌴 Agencia de Viajes Beach Camp - CRM Hub
 
-## Getting Started
+Este proyecto es un **CRM (Customer Relationship Management)** diseñado a medida para controlar y centralizar las ventas, reservas, exportaciones y cobros de la agencia de viajes Beach Camp.
 
-First, run the development server:
+## 🚀 Tecnologías Core
 
+- **Next.js 16+ (App Router):** Motor principal impulsado por Turbopack en frontend y backend.
+- **Base de Datos (SQLite + Prisma ORM):** Manejo robusto e íntegro de relaciones contables locales.
+- **Autenticación (JWT & Bcrypt):** Conexiones de rutas fuertemente validadas y contraseñas ilegibles.
+- **PM2:** Gestor principal de clústers para maximización de recursos en la versión de Producción Ubuntu.
+- **Librerías Extra:** `xlsx` (Excel), `jspdf` y `jspdf-autotable` (PDFs y recibos profesionales).
+
+---
+
+## 🔒 Características de Seguridad (Enterprise)
+1. **Defensa Anti-BFCache & Navegación Ciega:** Interceptores avanzados sobre `window.history` (`popstate` / `pageshow`) para prohibir que sesiones muertas reaparezcan al abusar del botón "Atrás/Adelante" del navegador.
+2. **Despliegues Blindados:** Los recibos PDF y el procesado Excel previenen la ejecución estéril asegurando flujos con datos reales. Todo input form evalúa paridad monetaria para liberar el acceso a la base de datos central.
+
+---
+
+## 💻 Entorno de Desarrollo (Local)
+
+Para configurar e iniciar temporalmente este proyecto en tu entorno local:
+
+1. Instala las paqueterías Node:
+   ```bash
+   npm install
+   ```
+2. Recrea el motor Prisma frente al archivo base (`.env` requerido para la URL SQLite):
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
+3. Inicia el servidor de desarrollo local:
+   ```bash
+   npm run dev
+   ```
+
+Abre [http://localhost:3000](http://localhost:3000) en el navegador donde la capa React se mantendrá en actualización en vivo (Hot-Reload).
+
+---
+
+## 🛠 Herramientas del Administrador Técnico (Sysadmin)
+
+El sistema soporta modificaciones en vivo al núcleo nativo de base de datos pasando por alto la UI del frente. Está documentado bajo la etiqueta Sysadmin.
+Para activar **Prisma Studio**:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run db:admin
 ```
+*(Y visita el puerto 5555 según especifica el manual).*  
+Consulta **`SYSADMIN_MANUAL.md`** para guía de inyecciones y exclusiones técnicas en base de datos.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
+## 🏭 Producción (Servidores Linux/Ubuntu)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+El proyecto viene provilegiado con un ecosistema preparado (`ecosystem.config.js`) y un script unificado de despliegue automatizado.
+- Nunca comprometas el script `.env` públicamente.
+- Ejecutar compilación de metales: `npm run build`
+- Invocar PM2 en el dominio: `pm2 start ecosystem.config.js --env production`
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Consulta **`PROJECT_RULES.md`** para estandarización de códigos, convenciones de pull requests y directrices operativas sobre variables de color (`globals.css`) e intercepción SSR (`proxy.js`).
