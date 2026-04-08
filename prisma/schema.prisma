@@ -10,10 +10,12 @@ generator client {
 model ClientRecord {
   id                 String   @id @default(uuid())
   destino            String
-  fecha              DateTime
+  fecha_salida       DateTime
+  fecha_retorno      DateTime
   nombre             String
   apellido           String
   cedula             String
+  edad               Int?
   monto_total        Float
   reserva_inicial    Float
   abonos             Float

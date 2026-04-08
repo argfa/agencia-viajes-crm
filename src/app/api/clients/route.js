@@ -18,10 +18,12 @@ export async function POST(request) {
     const body = await request.json()
     const { 
       destino, 
-      fecha, 
+      fecha_salida, 
+      fecha_retorno,
       nombre, 
       apellido, 
       cedula, 
+      edad,
       monto_total, 
       reserva_inicial, 
       abonos, 
@@ -40,21 +42,19 @@ export async function POST(request) {
     // Forzar cédula solo números
     const cleanCedula = cedula.replace(/\D/g, '');
 
-    const [day, month, year] = fecha.split('/')
-    let parsedDate = null
-    if (day && month && year) {
-      parsedDate = new Date(`${year}-${month}-${day}T12:00:00Z`)
-    } else {
-      parsedDate = new Date(fecha) // fallback
-    }
+    // Native ISO Parsing form React Datetime-Local
+    const parsedSalida = new Date(fecha_salida);
+    const parsedRetorno = new Date(fecha_retorno);
 
     const newClient = await prisma.clientRecord.create({
       data: {
         destino,
-        fecha: parsedDate,
+        fecha_salida: parsedSalida,
+        fecha_retorno: parsedRetorno,
         nombre: unSoloNombre,
         apellido: unSoloApellido,
         cedula: cleanCedula,
+        edad: parseInt(edad, 10) || null,
         monto_total: parseFloat(monto_total),
         reserva_inicial: parseFloat(reserva_inicial),
         abonos: parseFloat(abonos),

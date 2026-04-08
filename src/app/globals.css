@@ -3,7 +3,7 @@
   --secondary: #1ab5c4;    /* Cyan (Beach Camp text) */
   --accent: #f15d22;       /* Sunset Orange */
   --background: #eef5f9;
-  --card-bg: rgba(255, 255, 255, 0.93);
+  --card-bg: rgba(255, 255, 255, 0.5);
   --text: #1a1a1a;
   --text-muted: #555555;
   --success: #2d6a4f;
@@ -45,8 +45,8 @@ h1.title {
 /* Glassmorphism Card */
 .glass-card {
   background: var(--card-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.4);
   box-shadow: 0 8px 32px 0 rgba(0, 119, 182, 0.1);
@@ -181,4 +181,12 @@ tr:hover td {
 @keyframes slideIn {
   from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
+}
+
+.logo-hover {
+  transition: transform 0.3s ease;
+}
+
+.logo-hover:hover {
+  transform: scale(1.03);
 }

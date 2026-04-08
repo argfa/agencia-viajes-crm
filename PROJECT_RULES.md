@@ -13,8 +13,8 @@ Este documento consolida las reglas de arquitectura, diseño base, y buenas prá
 
 ## 2. Directrices de UI/UX y Sistema de Diseño (CSS)
 
-- **Estética Predominante:** Diseño "Glassmorphism" con tarjetas translúcidas (`.glass-card`), desenfoque (`backdrop-filter`) y sombras sutiles.
-- **Sistema de Colores y Tokens:** Están definidos estrictamente en `src/app/globals.css`. Todo elemento nuevo **debe usar estas variables** y no hardcodear colores genéricos:
+- **Estética Predominante:** Diseño "Tropical Glassmorphism" con tarjetas altamente translúcidas (`.glass-card` con opacidad reducida al 50%) e inserción de Marca de Agua gigante en el fondo de toda la ventana. Se utilizan algoritmos de fusión pura en CSS como `mix-blend-mode: multiply` para garantizar transparencia adaptativa en logotipos con fondo sólido. Se prioriza posicionamiento relativo/flex para los marcos evitando overlap destructivo.
+- **Sistema de Colores y Tokens:** Están definidos estrictamente en `src/app/globals.css`. Todo elemento nuevo **debe usar estas variables** y no hardcodear colores genéricos. Para botonería y llamados a la acción, es menester inyectar profundidad estilo `linear-gradient(135deg, ...)` con leves sombras `box-shadow` tridimensionales.
   - `--primary`: Deep Teal (`#094553`)
   - `--secondary`: Cyan (`#1ab5c4`)
   - `--accent`: Sunset Orange (`#f15d22`)
@@ -32,6 +32,8 @@ Este documento consolida las reglas de arquitectura, diseño base, y buenas prá
 
 ### 3.2 Dashboard Comercial (Reservas)
 - Existe una relación de `1` a `N` entre Titular (ClientRecord) y Acompañantes. Los acompañantes se guardan bajo el control numérico del campo `cantidad_pax`.
+- **Itinerario Estricto DUAL:** Todas las reservas requieren obligatoriamente una dualidad temporal formal por política (campos: `fecha_salida` y `fecha_retorno`). Queda prohibido usar fechas singulares monolíticas en base de datos.
+- **Validación Etaria Activa:** El registro del Titular en la firma del paquete necesita que la `edad` sea capturada invariablemente para el manifiesto de pasajeros, separando visualmente la titularidad de su cédula nativa en las columnas maestras.
 - Es fundamental mantener la coherencia financiera: **Restante por Pagar = Monto Total - Reserva Inicial - Abonos**.
 - Ante una divergencia manual de montos, el sistema levanta una "Vigilante Alert". Todo cambio contable en la interfaz debe mantener la opción de corrección automática (`Autocorregir`).
 - **Modalidades de Pagos:** Las reservas pueden tratarse como "Pago Completo" o en partes. Todas las deudas pre-existentes deben saldarse a través del mecanismo modal de **Abonos**. Cada abono generará una constancia `Receipt` automática.
@@ -65,8 +67,9 @@ npm run db:admin
 3. Dale clic a la tabla que desees modificar. Podrás crear (`Add record`), editar haciendo doble clic en una celda, o eliminar seleccionando la fila y presionando el botón "Delete".
 4. **Alerta de Seguridad (Precaución Sysadm):** Esta vía evade las reglas de validación de la aplicación de React. Cualquier borrado en cascada configurado en la DB se cumplirá silenciosamente. Por favor, realiza modificaciones aquí con cuidado.
 
-## 6. Despliegue en Producción (Infraestructura PM2)
+## 6. Despliegue en Producción (Infraestructura PM2 y Cron Jobs)
 
-1. El despliegue de producción se orienta a servidores Linux Ubuntu, exigiendo una clonación pura del repositorio y construcción de la base de datos nativa con `npx prisma db push` tras aislar los datos dev.
+1. El despliegue de producción en Ubuntu (`deploy.sh`) no presupone reinicio estéril de datos. **REGLA DE HIERRO:** Si existen cambios estructurales orgánicos de Prisma (`schema.prisma`), el archivo `deploy.sh` obligatoriamente pre-ejecutará mutaciones seguras en SQL vía `sqlite3` antes del evento destructivo de `npx prisma db push --accept-data-loss` (Mecánica "Hot-Migration" pre-barrido).
 2. Todas las operaciones vitales de inicio del sistema quedan regidas bajo el supervisor en segundo plano **PM2** con un archivo maestro del proyecto `ecosystem.config.js`. Este garantizará la distribución equilibrada en el núcleo y autorreinicio vitalicio configurado con `pm2 startup`.
-3. Está total y absolutamente advertido de no subir la configuración `.env` en repositorios públicos. Los secretos deben implantarse herméticamente o vía inyección SSh/SCP en el directorio raíz del servidor final de turno.
+3. **Respaldo Periódico Riguroso:** Todo despliegue inyecta auto-mantenimiento forzado instalando un script `backup.sh` anclado a `crontab` nocturno (Ej. 23:59hs) para originar copias duplicadas hacia el directorio protegido `/var/www/.../backups_db`, el cual retiene un control de podado y auto-eliminación para historiales excedentes a 30 días.
+4. Está total y absolutamente advertido de no subir la configuración `.env` en repositorios públicos. Los secretos deben implantarse herméticamente o vía inyección SSh/SCP en el directorio raíz del servidor final de turno.

@@ -10,7 +10,21 @@ export default function RootLayout({ children }) {
     <html lang="es">
       <body>
         <main className="app-container">
-          <h1 className="title">🌴 Agencia de Viajes Beach Camp</h1>
+          <div style={{
+            position: 'fixed',
+            top: '40%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
+            width: '80vw',
+            height: '80vh',
+            backgroundImage: "url('/logo.png')",
+            backgroundSize: 'contain',
+            backgroundPosition: 'center',
+            backgroundRepeat: 'no-repeat',
+            opacity: 0.35,
+            zIndex: -1,
+            mixBlendMode: 'multiply'
+          }}></div>
           {children}
         </main>
       </body>

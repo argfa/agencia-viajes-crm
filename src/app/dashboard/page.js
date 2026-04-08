@@ -39,6 +39,7 @@ export default function AgenciaApp() {
 
   const [clients, setClients] = useState([])
   const [filterDestino, setFilterDestino] = useState('Todos')
+  const [filterStatus, setFilterStatus] = useState('Todos')
   const [destinosUnicos, setDestinosUnicos] = useState([])
   
   const [destinos, setDestinos] = useState([])
@@ -62,10 +63,12 @@ export default function AgenciaApp() {
   
   const [formData, setFormData] = useState({
     destino: '',
-    fecha: '',
+    fecha_salida: '',
+    fecha_retorno: '',
     nombre: '',
     apellido: '',
     cedula: '',
+    edad: '',
     cantidad_pax: '1',
     monto_total: '',
     reserva_inicial: '',
@@ -147,7 +150,7 @@ export default function AgenciaApp() {
     setAcompanantesList(prev => {
       if (prev.length === extraPax) return prev
       if (prev.length < extraPax) {
-        const added = Array.from({length: extraPax - prev.length}, () => ({ nombre: '', apellido: '', cedula: '', isMenor: false }))
+        const added = Array.from({length: extraPax - prev.length}, () => ({ nombre: '', apellido: '', cedula: '', edad: '', isMenor: false }))
         return [...prev, ...added]
       }
       return prev.slice(0, extraPax)
@@ -186,15 +189,7 @@ export default function AgenciaApp() {
     })
   }
 
-  const handleDateMaskDashboard = (e) => {
-    let val = e.target.value.replace(/\D/g, '')
-    if (val.length >= 5) {
-      val = val.substring(0, 2) + '/' + val.substring(2, 4) + '/' + val.substring(4, 8)
-    } else if (val.length >= 3) {
-      val = val.substring(0, 2) + '/' + val.substring(2, 4)
-    }
-    setFormData(prev => ({...prev, fecha: val}))
-  }
+  // Formato de máscara manual eliminado (usando native datetime-local)
 
   const handleIgnoreWarning = () => setShowWarning(false)
   const handleAutoFix = () => {
@@ -235,7 +230,7 @@ export default function AgenciaApp() {
           ced = `${formDataToSend.cedula || 'TITULAR'}-MENOR-${idx + 1}`;
         }
         if (!n && !ap && !ced) return '';
-        return `${n} ${ap} ${ced ? '('+ced+')' : ''}`.trim();
+        return `${n} ${ap} ${ced ? '('+ced+')' : ''} [${a.edad ? a.edad + ' AÑOS' : 'S/E'}]`.trim();
       }).filter(str => str !== '').join(' | ');
 
       const res = await fetch('/api/clients', {
@@ -252,13 +247,13 @@ export default function AgenciaApp() {
       })
       if (res.ok) {
         const savedClient = await res.json()
-        const pdfUrl = generateReceiptPDF(savedClient, 'CONTRATO', isPagoCompleto ? formData.monto_total : formData.reserva_inicial)
+        const pdfUrl = await generateReceiptPDF(savedClient, 'CONTRATO', isPagoCompleto ? parseFloat(formData.monto_total) : parseFloat(formData.reserva_inicial))
         
         setAcompanantesList([])
         setIsPagoCompleto(false)
         setFormData({
             destino: destinos.length > 0 ? destinos[0].name : '', 
-            fecha: '', nombre: '', apellido: '', cedula: '',
+            fecha_salida: '', fecha_retorno: '', nombre: '', apellido: '', cedula: '', edad: '',
             cantidad_pax: '1',
             monto_total: '', reserva_inicial: '', abonos: '', restante_por_pagar: '',
             metodo_pago: 'Efectivo', vendedor: ''
@@ -275,7 +270,8 @@ export default function AgenciaApp() {
   const filteredClients = clients.filter(c => {
     const matchDestino = filterDestino === 'Todos' || c.destino === filterDestino;
     const matchCedula = searchCedula === '' || c.cedula.includes(searchCedula) || (c.acompanantes && c.acompanantes.includes(searchCedula));
-    return matchDestino && matchCedula;
+    const matchStatus = filterStatus === 'Todos' || (filterStatus === 'Pagado' ? c.restante_por_pagar === 0 : c.restante_por_pagar > 0);
+    return matchDestino && matchCedula && matchStatus;
   });
 
   const handleSort = (key) => {
@@ -290,7 +286,7 @@ export default function AgenciaApp() {
     let aVal = a[sortConfig.key];
     let bVal = b[sortConfig.key];
     
-    if (sortConfig.key === 'fecha') {
+    if (sortConfig.key === 'fecha_salida') {
       aVal = new Date(aVal).getTime();
       bVal = new Date(bVal).getTime();
     } else if (sortConfig.key === 'status') {
@@ -442,52 +438,219 @@ export default function AgenciaApp() {
     window.open(pdfUrl, '_blank')
   }
 
-  const generateReceiptPDF = (clientData, type, amount) => {
+  const generateReceiptPDF = async (clientData, type, amount) => {
+    amount = parseFloat(amount) || 0;
     const doc = new jsPDF()
+
+    const loadImage = (src) => new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "Anonymous";
+      img.src = src;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width;
+        canvas.height = img.height;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(img, 0, 0);
+        
+        try {
+          const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+          const data = imgData.data;
+          const r0 = data[0], g0 = data[1], b0 = data[2];
+          for (let i = 0; i < data.length; i += 4) {
+            const r = data[i], g = data[i+1], b = data[i+2];
+            // Tolerancia para clareo de imagen (remover fondo claro artificial)
+            if (Math.abs(r - r0) < 30 && Math.abs(g - g0) < 30 && Math.abs(b - b0) < 30) {
+              data[i+3] = 0; 
+            }
+          }
+          ctx.putImageData(imgData, 0, 0);
+          resolve(canvas.toDataURL('image/png'));
+        } catch (e) {
+          resolve(img); // Fallback si hay cors issues
+        }
+      };
+      img.onerror = (e) => reject(e);
+    });
+    
+    let logoImg;
+    try {
+      logoImg = await loadImage('/logo.png');
+    } catch (e) {
+      console.warn("Logo no encontrado", e);
+    }
+
+    if (type === 'CONTRATO') {
+      doc.setFillColor(235, 235, 235);
+      doc.rect(0, 0, 210, 297, 'F');
+
+      if (logoImg) {
+        doc.addImage(logoImg, 'PNG', 85, 4, 40, 40)
+        doc.setFont("helvetica", "bold")
+        doc.setFontSize(7)
+        doc.text("Rif: J-407551825", 105, 43, { align: 'center' })
+      }
+      
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(16)
+      doc.text("Agencia de Viajes Beach Camp", 105, 50, { align: 'center' })
+      
+      doc.setFontSize(12)
+      doc.text("RECIBO DE CONTRATO DE SERVICIO TURÍSTICO", 105, 58, { align: 'center' })
+      
+      doc.setFont("helvetica", "normal")
+      doc.setFontSize(9)
+      doc.text(`Fecha de Emisión: ${new Date().toLocaleString('es-VE')}`, 14, 75)
+      doc.text(`Cédula Titular: V-${clientData.cedula}   |   Edad: ${clientData.edad || 'N/A'} años`, 14, 82)
+      doc.text(`Nombre Titular: ${clientData.nombre} ${clientData.apellido}`, 14, 89)
+      doc.text(`Destino: ${clientData.destino}`, 14, 96)
+      
+      const finalSalida = clientData.fecha_salida || clientData.fecha || new Date();
+      const finalRetorno = clientData.fecha_retorno || clientData.fecha || new Date();
+      
+      const fSalidaStr = new Date(finalSalida).toLocaleString('es-VE', {dateStyle:'short', timeStyle:'short', hour12:true});
+      const fRetornoStr = new Date(finalRetorno).toLocaleString('es-VE', {dateStyle:'short', timeStyle:'short', hour12:true});
+      
+      doc.setLineWidth(0.5)
+      doc.line(14, 100, 196, 100)
+      doc.text(`Itinerario: Salida el ${fSalidaStr}   |   Retorno el ${fRetornoStr}`, 14, 106)
+      doc.line(14, 109, 196, 109)
+
+      const paxCount = clientData.cantidad_pax || 1;
+      
+      const textoLegal = `Los suscritos, ciudadano Yohan Ernesto Quintero García, de nacionalidad venezolana identificado con su cedula de identidad N° 22.812.760 director del servicio de turismo Beach Camp. C.A. y el (la) ${clientData.nombre} ${clientData.apellido}, V-${clientData.cedula} (Edad: ${clientData.edad || 'N/A'} años) nacionalidad VENEZOLANA postulante a ser participante del itinerario hacia ${clientData.destino} con salida programada para el ${fSalidaStr} y retorno el ${fRetornoStr}, asume el compromiso adquirido que se detalla a continuación:`;
+      
+      const finalLines = doc.splitTextToSize(textoLegal, 180);
+      doc.text(finalLines, 14, 116)
+
+      let bulletY = 116 + (finalLines.length * 5) + 5;
+      doc.text("• Respetar los horarios establecidos paraca actividad,ante y durante el viaje.", 18, bulletY)
+      doc.text("• Cancelar el restante del paquete ofrecido a la fecha indicada.", 18, bulletY + 6)
+      doc.text("• Cumplir los lineamientos y normas establecidas por los organizadores del viaje.", 18, bulletY + 12)
+
+      const textoReembolso = `En caso de no poder viajar en la fecha correspondiente la reservación no es reembolsable y si llegase a tener algún abono aparte de la reservación se mantendrá para un próximo viaje. Por incumplimiento, Servicio de Viajes y Turismo Beach Camp Mochima queda liberado de realizar cualquier tipo de reembolso o devolución de dinero, y podrá sancionar con ayuda de organismos de seguridad de entes públicos a los implicados según la gravedad de la falta.`;
+      const reembolsoLines = doc.splitTextToSize(textoReembolso, 180);
+      
+      let nextY = bulletY + 25;
+      doc.text(reembolsoLines, 14, nextY)
+      
+      nextY += (reembolsoLines.length * 5) + 8;
+      doc.text(`Se suscribe la presente acta compromiso en la Ciudad de San Félix ${new Date().toLocaleDateString('es-VE')}`, 14, nextY)
+      nextY += 8;
+
+      doc.text("Participantes al viaje programado arriba mencionado:", 14, nextY)
+      nextY += 8;
+      
+      doc.setFont("helvetica", "normal")
+      const acompanantesL = clientData.acompanantes ? clientData.acompanantes.split(' | ') : [];
+      let totalPaxList = [`1-${clientData.nombre} ${clientData.apellido} V-${clientData.cedula} [Edad: ${clientData.edad || 'N/A'}]`];
+      acompanantesL.forEach((ac, idx) => totalPaxList.push(`${idx+2}-${ac}`));
+
+      totalPaxList.forEach((line, index) => {
+         doc.text(line, 14, nextY + (index * 6));
+      });
+
+      doc.addPage();
+    } 
+
+    doc.setFillColor(220, 220, 220)
+    doc.rect(0, 0, 210, 297, 'F') 
+    
     doc.setFont("helvetica", "bold")
-    doc.setFontSize(22)
-    doc.text("Agencia de Viajes Beach Camp", 105, 20, { align: 'center' })
+    doc.setFontSize(16)
+    doc.text(`RECIBO DE ${type}`, 105, 22, { align: 'center' })
+    doc.setFont("helvetica", "normal")
+    doc.setFontSize(9)
+    doc.text(`Fecha de Emisión: ${new Date().toLocaleString('es-VE', {dateStyle:'short', timeStyle:'short', hour12:true})}`, 105, 28, { align: 'center' })
+
+    doc.setFont("helvetica", "italic")
+    doc.setFont("helvetica", "bolditalic")
+    doc.setFontSize(28)
+    doc.text("¡Piensa menos", 18, 75)
+    doc.text("viaja más!", 25, 87)
+
+    if (logoImg) {
+      doc.addImage(logoImg, 'PNG', 155, 15, 38, 38)
+      doc.setFont("helvetica", "bold")
+      doc.setFontSize(7)
+      doc.text("Rif: J-407551825", 174, 52, { align: 'center' })
+    }
+
+    const boxY = 120;
+    
+    doc.setDrawColor(120, 120, 120)
+    doc.setLineWidth(0.8)
+    doc.line(10, boxY, 200, boxY)       
+    doc.line(10, boxY + 25, 200, boxY + 25) 
+    doc.line(75, boxY, 75, boxY + 110)         
+
+    doc.setFontSize(9)
+    doc.setFont("helvetica", "bold")
+    doc.text(`${clientData.nombre} ${clientData.apellido}, V-${clientData.cedula} [Edad: ${clientData.edad || 'N/A'}]`, 12, boxY + 10)
     
     doc.setFontSize(14)
-    if (type === 'CONTRATO') {
-      doc.text("RECIBO DE CONTRATO DE SERVICIO TURÍSTICO", 105, 30, { align: 'center' })
-    } else {
-      doc.text("RECIBO DE ABONO A DEUDA", 105, 30, { align: 'center' })
-    }
-    
+    doc.text("Pagado a:", 90, boxY + 10)
+    doc.text("Beach Camp Mochima, C.A.", 90, boxY + 18)
+
+    doc.setFontSize(12)
+    doc.text("Descripción", 18, boxY + 35)
+    doc.setFont("helvetica", "bold")
+    doc.text("CANTIDAD", 160, boxY + 35)
+
+    doc.line(10, boxY + 42, 200, boxY + 42)
+
+    doc.setFontSize(9)
     doc.setFont("helvetica", "normal")
+    const notasDesc = `Nota: Reservación de ${(clientData.cantidad_pax || 1).toString().padStart(2, '0')} cupos ${clientData.destino}`
+    const noteLines = doc.splitTextToSize(notasDesc, 60)
+    doc.text(noteLines, 12, boxY + 50)
+
+    let yPax = boxY + 50 + (noteLines.length * 5);
+    
+    const acompanantesL = clientData.acompanantes ? clientData.acompanantes.split(' | ') : [];
+    let totalPaxList2 = [`1-${clientData.nombre} ${clientData.apellido} V-${clientData.cedula} [Edad: ${clientData.edad || 'N/A'}]`];
+    acompanantesL.forEach((ac, idx) => totalPaxList2.push(`${idx+2}-${ac}`));
+
+    totalPaxList2.forEach((line, index) => {
+       const pLine = doc.splitTextToSize(line, 60);
+       doc.text(pLine, 12, yPax);
+       yPax += pLine.length * 5;
+    });
+
+    const valY = boxY + 60;
     doc.setFontSize(11)
-    doc.text(`Fecha de Emisión: ${new Date().toLocaleString('es-VE')}`, 14, 45)
-    doc.text(`Cédula Titular: ${clientData.cedula}`, 14, 52)
-    doc.text(`Nombre Titular: ${clientData.nombre} ${clientData.apellido}`, 14, 59)
-    doc.text(`Destino: ${clientData.destino} - Fecha del Viaje: ${new Date(clientData.fecha).toLocaleDateString('es-VE')}`, 14, 66)
-    
-    doc.setLineWidth(0.5)
-    doc.line(14, 72, 196, 72)
-    
-    if (type === 'CONTRATO') {
-      doc.text(`Cantidad de PAX: ${clientData.cantidad_pax || 1}`, 14, 82)
-      doc.text(`Acompañantes: ${clientData.acompanantes || 'N/A'}`, 14, 89)
-      doc.text(`Monto Total Contratado: $${clientData.monto_total}`, 14, 103)
-      doc.text(`Monto Pagado Hoy (Reserva Inicial): $${amount}`, 14, 110)
-      doc.setFont("helvetica", "bold")
-      doc.text(`Restante por Pagar: $${clientData.restante_por_pagar}`, 14, 117)
-    } else if (type === 'ABONO') {
-      const deudaAnterior = clientData.restante_por_pagar + amount
-      doc.text(`Monto Total del Viaje: $${clientData.monto_total}`, 14, 82)
-      doc.text(`Abonos Acumulados Anteriores: $${clientData.abonos - amount}`, 14, 89)
-      doc.text(`Deuda Anterior: $${deudaAnterior}`, 14, 96)
-      doc.text(`Monto Abonado Hoy: $${amount}`, 14, 110)
-      doc.setFont("helvetica", "bold")
-      doc.text(`Deuda Actualizada: $${clientData.restante_por_pagar}`, 14, 117)
-    }
-    
+    doc.setFont("helvetica", "bold")
+    doc.text("TOTAL PAQUETE", 105, valY)
     doc.setFont("helvetica", "normal")
-    doc.setFontSize(10)
-    doc.text("Gracias por preferir a Agencia de Viajes Beach Camp.", 105, 140, { align: 'center' })
-    doc.text("¡Buen Viaje!", 105, 145, { align: 'center' })
+    doc.text(`$${clientData.monto_total.toFixed(2)}`, 170, valY)
+
+    doc.setFont("helvetica", "bold")
+    doc.text("Abono", 115, valY + 15)
+    doc.setFont("helvetica", "normal")
+    doc.text(`$${amount.toFixed(2)}`, 170, valY + 15)
+
+    doc.setFont("helvetica", "bold")
+    doc.text("Resta", 115, valY + 30)
+    doc.setFont("helvetica", "normal")
+    doc.text(`$${clientData.restante_por_pagar.toFixed(2)}`, 170, valY + 30)
+
+    doc.setFont("helvetica", "bold")
+    doc.text("subTotal", 115, valY + 45)
     
+    doc.text("TOTAL", 115, valY + 55)
+    doc.setFont("helvetica", "normal")
+    doc.text(`$${clientData.monto_total.toFixed(2)}`, 170, valY + 55)
+
+    doc.setFontSize(13)
+    doc.setFont("helvetica", "bold")
+    doc.text("Recibido por: Beach Camp", 90, boxY + 130)
+
     return doc.output('bloburl')
+  }
+
+  const printReceipt = async (client) => {
+    const pdfUrl = await generateReceiptPDF(client, 'CONTRATO', client.reserva_inicial || client.monto_total);
+    setSuccessReceipt({ url: pdfUrl, message: 'Copia de recibo generada' });
   }
 
   const openAbonoModal = (client) => {
@@ -522,7 +685,7 @@ export default function AgenciaApp() {
     
     if (res.ok) {
       const updatedClient = await res.json()
-      const pdfUrl = generateReceiptPDF(updatedClient, 'ABONO', amount)
+      const pdfUrl = await generateReceiptPDF(updatedClient, 'ABONO', amount)
       setShowAbonoModal(false)
       setSelectedClientForAbono(null)
       fetchClients()
@@ -575,21 +738,28 @@ export default function AgenciaApp() {
 
   const isFormValid = 
     formData.destino.trim() !== '' &&
-    formData.fecha.length === 10 &&
+    formData.fecha_salida !== '' &&
+    formData.fecha_retorno !== '' &&
+    new Date(formData.fecha_retorno) > new Date(formData.fecha_salida) &&
     formData.nombre.trim() !== '' &&
     formData.apellido.trim() !== '' &&
     formData.cedula.trim() !== '' &&
+    formData.edad.trim() !== '' && parseInt(formData.edad) > 0 &&
     parseInt(formData.cantidad_pax) >= 1 &&
     formData.vendedor.trim() !== '' &&
     !isNaN(parseFloat(formData.monto_total)) && parseFloat(formData.monto_total) > 0 &&
     (isPagoCompleto || (!isNaN(parseFloat(formData.reserva_inicial)) && parseFloat(formData.reserva_inicial) >= 0)) &&
-    (parseInt(formData.cantidad_pax) <= 1 || acompanantesList.every(ac => ac.nombre.trim() !== '' && ac.apellido.trim() !== '' && (ac.isMenor || (ac.cedula && ac.cedula.trim() !== ''))));
+    (parseInt(formData.cantidad_pax) <= 1 || acompanantesList.every(ac => ac.nombre.trim() !== '' && ac.apellido.trim() !== '' && ac.edad.trim() !== '' && parseInt(ac.edad) >= 0 && (ac.isMenor || (ac.cedula && ac.cedula.trim() !== ''))));
 
   return (
     <>
-      <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom: '1.5rem', background: 'rgba(255,255,255,0.7)', padding: '1rem 2rem', borderRadius: '12px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)'}}>
-        <h1 style={{color: 'var(--primary)', textShadow: '1px 1px 2px rgba(0,0,0,0.1)', margin: 0}}>Beach Camp Dashboard 🏖️</h1>
-        <button onClick={async () => { await fetch('/api/auth/logout', {method:'POST'}); window.location.href='/'; }} className="btn btn-secondary" style={{background:'#e63946', color: 'white', fontWeight: 'bold'}}>Cerrar Sesión Segura</button>
+      <div style={{display: 'flex', justifyContent: 'flex-start', marginBottom: '1.5rem'}}>
+        <button 
+          onClick={async () => { await fetch('/api/auth/logout', {method:'POST'}); window.location.href='/'; }} 
+          className="btn btn-secondary" 
+          style={{background:'linear-gradient(135deg, #e63946, #d00000)', color: 'white', fontWeight: 'bold', border: 'none', boxShadow: '0 4px 10px rgba(230, 57, 70, 0.4)', zIndex: 1000}}>
+          Cerrar Sesión
+        </button>
       </div>
 
       <div className="glass-card">
@@ -610,8 +780,12 @@ export default function AgenciaApp() {
             </div>
             
             <div className="input-group">
-              <label>Fecha del Viaje (DD/MM/YYYY)</label>
-              <input name="fecha" type="text" maxLength={10} placeholder="DD/MM/YYYY" required value={formData.fecha} onChange={handleDateMaskDashboard}/>
+              <label>Fecha y Hora de Salida</label>
+              <input name="fecha_salida" type="datetime-local" required value={formData.fecha_salida} onChange={handleChange}/>
+            </div>
+            <div className="input-group">
+              <label>Fecha y Hora de Retorno</label>
+              <input name="fecha_retorno" type="datetime-local" required value={formData.fecha_retorno} onChange={handleChange}/>
             </div>
             <div className="input-group">
               <label>Nombre</label>
@@ -624,6 +798,10 @@ export default function AgenciaApp() {
             <div className="input-group">
               <label>Cédula/ID</label>
               <input name="cedula" type="text" required value={formData.cedula} onChange={e => handleChange({ target: { name: 'cedula', value: e.target.value.replace(/\D/g, '') }})}/>
+            </div>
+            <div className="input-group">
+              <label>Edad (Años)</label>
+              <input name="edad" type="number" min="0" required value={formData.edad} onChange={handleChange}/>
             </div>
             <div className="input-group">
               <label>Cantidad de Personas (PAX)</label>
@@ -655,6 +833,10 @@ export default function AgenciaApp() {
                         </label>
                       </div>
                       <input type="text" value={acomp.isMenor ? 'MENOR' : acomp.cedula} disabled={acomp.isMenor} onChange={e => handleAcompananteChange(idx, 'cedula', e.target.value.replace(/\D/g, ''))} style={{padding: '0.4rem'}} placeholder="Ej. 12345678"/>
+                    </div>
+                    <div className="input-group" style={{flex: 1, minWidth: '80px', maxWidth: '100px'}}>
+                      <label style={{fontSize: '0.85rem'}}>Edad</label>
+                      <input type="number" min="0" required value={acomp.edad} onChange={e => handleAcompananteChange(idx, 'edad', e.target.value)} style={{padding: '0.4rem'}} placeholder="Años"/>
                     </div>
                   </div>
                 ))}
@@ -732,16 +914,27 @@ export default function AgenciaApp() {
               style={{padding: '0.5rem', borderRadius: '8px', border: '1px solid #90e0ef', outline: 'none'}}
             />
             
-            <label style={{fontWeight: 'bold', color: 'var(--text)'}}>Filtrar por Destino:</label>
+            <label style={{fontWeight: 'bold', color: 'var(--text)'}}>Destino:</label>
             <select 
               value={filterDestino} 
               onChange={(e) => setFilterDestino(e.target.value)}
-              style={{padding: '0.5rem', borderRadius: '8px', border: '1px solid #90e0ef', outline: 'none'}}
+              style={{padding: '0.5rem', borderRadius: '8px', border: '1px solid #90e0ef', outline: 'none', marginRight: '0.5rem'}}
             >
-              <option value="Todos">Todos los destinos</option>
+              <option value="Todos">Todos</option>
               {destinosUnicos.map(d => (
                 <option key={d} value={d}>{d}</option>
               ))}
+            </select>
+
+            <label style={{fontWeight: 'bold', color: 'var(--text)'}}>Status:</label>
+            <select 
+              value={filterStatus} 
+              onChange={(e) => setFilterStatus(e.target.value)}
+              style={{padding: '0.5rem', borderRadius: '8px', border: '1px solid #90e0ef', outline: 'none'}}
+            >
+              <option value="Todos">Todos</option>
+              <option value="Pagado">Pagado</option>
+              <option value="Pendiente">Pendiente</option>
             </select>
           </div>
         </div>
@@ -750,7 +943,7 @@ export default function AgenciaApp() {
           <button 
             onClick={exportExcel} 
             className="btn btn-secondary" 
-            style={{background: sortedClients.length === 0 ? '#95a5a6' : '#2d6a4f', cursor: sortedClients.length === 0 ? 'not-allowed' : 'pointer', opacity: sortedClients.length === 0 ? 0.6 : 1}}
+            style={{background: sortedClients.length === 0 ? '#95a5a6' : 'linear-gradient(135deg, #40916c, #1b4332)', cursor: sortedClients.length === 0 ? 'not-allowed' : 'pointer', opacity: sortedClients.length === 0 ? 0.6 : 1, border: 'none', boxShadow: '0 4px 10px rgba(45, 106, 79, 0.3)'}}
             disabled={sortedClients.length === 0}
           >
             📊 Exportar Excel
@@ -758,7 +951,7 @@ export default function AgenciaApp() {
           <button 
             onClick={exportPDF} 
             className="btn btn-secondary" 
-            style={{background: sortedClients.length === 0 ? '#95a5a6' : '#d00000', cursor: sortedClients.length === 0 ? 'not-allowed' : 'pointer', opacity: sortedClients.length === 0 ? 0.6 : 1}}
+            style={{background: sortedClients.length === 0 ? '#95a5a6' : 'linear-gradient(135deg, #e63946, #9b2226)', cursor: sortedClients.length === 0 ? 'not-allowed' : 'pointer', opacity: sortedClients.length === 0 ? 0.6 : 1, border: 'none', boxShadow: '0 4px 10px rgba(208, 0, 0, 0.3)'}}
             disabled={sortedClients.length === 0}
           >
             📄 Exportar PDF
@@ -770,8 +963,9 @@ export default function AgenciaApp() {
             <thead>
               <tr>
                 <th onClick={() => handleSort('destino')} style={{cursor: 'pointer'}}>Destino {sortConfig.key === 'destino' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}</th>
-                <th onClick={() => handleSort('fecha')} style={{cursor: 'pointer'}}>Fecha {sortConfig.key === 'fecha' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}</th>
-                <th>Titular</th>
+                <th onClick={() => handleSort('fecha_salida')} style={{cursor: 'pointer'}}>Itinerario {sortConfig.key === 'fecha_salida' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}</th>
+                <th onClick={() => handleSort('nombre')} style={{cursor: 'pointer'}}>Titular {sortConfig.key === 'nombre' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}</th>
+                <th onClick={() => handleSort('cedula')} style={{cursor: 'pointer'}}>Cédula {sortConfig.key === 'cedula' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : '↕'}</th>
                 <th>PAX</th>
                 <th>Total ($)</th>
                 <th>Pagado ($)</th>
@@ -782,7 +976,7 @@ export default function AgenciaApp() {
             <tbody>
               {paginatedClients.length === 0 ? (
                 <tr>
-                  <td colSpan="8" style={{textAlign: 'center', color: 'var(--text-muted)'}}>No hay registros disponibles.</td>
+                  <td colSpan="9" style={{textAlign: 'center', color: 'var(--text-muted)'}}>No hay registros disponibles.</td>
                 </tr>
               ) : (
                 paginatedClients.map(c => {
@@ -790,8 +984,17 @@ export default function AgenciaApp() {
                   return (
                     <tr key={c.id}>
                       <td>{c.destino}</td>
-                      <td>{new Date(c.fecha).toLocaleDateString('es-VE', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
-                      <td>{c.nombre} {c.apellido}</td>
+                      <td style={{fontSize: '0.85rem'}}>
+                        <strong style={{color:'var(--primary)'}}>Salida:</strong><br/>{new Date(c.fecha_salida).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short', hour12: true })}<br/>
+                        <strong style={{color:'var(--primary)'}}>Retorno:</strong><br/>{new Date(c.fecha_retorno).toLocaleString('es-VE', { dateStyle: 'short', timeStyle: 'short', hour12: true })}
+                      </td>
+                      <td>
+                        {c.nombre} {c.apellido}
+                        <div style={{marginTop: '0.4rem'}}>
+                          <button onClick={() => printReceipt(c)} className="btn btn-secondary" style={{padding: '0.1rem 0.4rem', fontSize: '0.75rem', background: 'var(--primary)'}} title="Imprimir Contrato Original">📄 Imprimir</button>
+                        </div>
+                      </td>
+                      <td>V-{c.cedula}</td>
                       <td>
                         {c.cantidad_pax || 1}
                         {(c.cantidad_pax > 1 && c.acompanantes) && (
