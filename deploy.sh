@@ -74,7 +74,7 @@ rm -rf .next
 npm run build
 
 echo "==> Iniciando / Reiniciando Servidor con PM2..."
-pm2 restart playa-camp-crm || pm2 start ecosystem.config.js --env production
+pm2 start ecosystem.config.js --env production
 pm2 save
 
 echo "==> Configurando PM2 para auto-arranque..."

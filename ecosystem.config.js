@@ -16,6 +16,13 @@ module.exports = {
         NODE_ENV: 'production',
         PORT: 3000
       }
+    },
+    {
+      name: 'prisma-admin',
+      script: 'npm',
+      args: 'run db:admin',
+      autorestart: true,
+      watch: false
     }
   ]
 };

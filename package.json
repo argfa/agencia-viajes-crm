@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "db:admin": "prisma studio"
+    "db:admin": "npx prisma studio --hostname 0.0.0.0 --port 5555"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
