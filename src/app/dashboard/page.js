@@ -744,12 +744,11 @@ export default function AgenciaApp() {
     formData.nombre.trim() !== '' &&
     formData.apellido.trim() !== '' &&
     formData.cedula.trim() !== '' &&
-    formData.edad.trim() !== '' && parseInt(formData.edad) > 0 &&
     parseInt(formData.cantidad_pax) >= 1 &&
     formData.vendedor.trim() !== '' &&
     !isNaN(parseFloat(formData.monto_total)) && parseFloat(formData.monto_total) > 0 &&
     (isPagoCompleto || (!isNaN(parseFloat(formData.reserva_inicial)) && parseFloat(formData.reserva_inicial) >= 0)) &&
-    (parseInt(formData.cantidad_pax) <= 1 || acompanantesList.every(ac => ac.nombre.trim() !== '' && ac.apellido.trim() !== '' && ac.edad.trim() !== '' && parseInt(ac.edad) >= 0 && (ac.isMenor || (ac.cedula && ac.cedula.trim() !== ''))));
+    (parseInt(formData.cantidad_pax) <= 1 || acompanantesList.every(ac => ac.nombre.trim() !== '' && ac.apellido.trim() !== '' && (!ac.isMenor || (ac.edad.trim() !== '' && parseInt(ac.edad) >= 0)) && (ac.isMenor || (ac.cedula && ac.cedula.trim() !== ''))));
 
   return (
     <>
@@ -800,10 +799,6 @@ export default function AgenciaApp() {
               <input name="cedula" type="text" required value={formData.cedula} onChange={e => handleChange({ target: { name: 'cedula', value: e.target.value.replace(/\D/g, '') }})}/>
             </div>
             <div className="input-group">
-              <label>Edad (Años)</label>
-              <input name="edad" type="number" min="0" required value={formData.edad} onChange={handleChange}/>
-            </div>
-            <div className="input-group">
               <label>Cantidad de Personas (PAX)</label>
               <input name="cantidad_pax" type="number" min="1" required value={formData.cantidad_pax} onChange={handleChange}/>
             </div>
@@ -836,7 +831,7 @@ export default function AgenciaApp() {
                     </div>
                     <div className="input-group" style={{flex: 1, minWidth: '80px', maxWidth: '100px'}}>
                       <label style={{fontSize: '0.85rem'}}>Edad</label>
-                      <input type="number" min="0" required value={acomp.edad} onChange={e => handleAcompananteChange(idx, 'edad', e.target.value)} style={{padding: '0.4rem'}} placeholder="Años"/>
+                      <input type="number" min="0" required={acomp.isMenor} value={acomp.edad} onChange={e => handleAcompananteChange(idx, 'edad', e.target.value)} style={{padding: '0.4rem'}} placeholder="Años"/>
                     </div>
                   </div>
                 ))}
