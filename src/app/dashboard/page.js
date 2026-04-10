@@ -209,10 +209,7 @@ export default function AgenciaApp() {
       if (!confirmar) return;
     }
 
-    if (formData.fecha.length !== 10) {
-      alert('Recuerde que el formato de fecha debe ser estrictamente DD/MM/YYYY')
-      return;
-    }
+
 
     try {
       const formDataToSend = { ...formData }
