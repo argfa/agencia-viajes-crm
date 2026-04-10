@@ -29,6 +29,14 @@ sudo_cmd chown -R $USER:$USER /var/www
 cd /var/www
 
 if [ -d "agencia-viajes-crm" ]; then
+  echo "==> Respaldando Base de Datos Activa PREVIO a sincronización..."
+  sudo_cmd mkdir -p /var/www/agencia-viajes-crm/backups_db
+  BACKUP_FILE="/var/www/agencia-viajes-crm/backups_db/pre_deploy_$(date +%Y%m%d_%H%M%S).db"
+  if [ -f "agencia-viajes-crm/prisma/dev.db" ]; then
+    cp agencia-viajes-crm/prisma/dev.db "$BACKUP_FILE"
+    echo "✔ Respaldo pre-despliegue guardado seguro."
+  fi
+
   echo "==> Repositorio detectado. Actualizando código..."
   cd agencia-viajes-crm
   git reset --hard HEAD
@@ -42,12 +50,7 @@ fi
 echo "==> Instalando librerías (npm install)..."
 npm install
 
-echo "==> Respaldando Base de Datos Activa y Preparando Migración Segura..."
-sudo_cmd mkdir -p /var/www/agencia-viajes-crm/backups_db
-BACKUP_FILE="/var/www/agencia-viajes-crm/backups_db/pre_deploy_$(date +%Y%m%d_%H%M%S).db"
-if [ -f "prisma/dev.db" ]; then
-  cp prisma/dev.db "$BACKUP_FILE"
-  echo "✔ Respaldo pre-despliegue guardado seguro."
+echo "==> Ejecutando capa de migración segura..."
   
   # Si el schema ya fue migrado alguna vez, este bloque fallará inofensivamente (|| true)
   echo "💉 Inyectando migración de esquema SQLite (Preveniendo barrido de Prisma)..."
