@@ -212,7 +212,18 @@ export default function AgenciaApp() {
 
 
     try {
-      const formDataToSend = { ...formData }
+      const tzOffset = (() => {
+        const tzo = -new Date().getTimezoneOffset();
+        const dif = tzo >= 0 ? '+' : '-';
+        const pad = num => (num < 10 ? '0' : '') + num;
+        return dif + pad(Math.floor(Math.abs(tzo) / 60)) + ':' + pad(Math.abs(tzo) % 60);
+      })();
+
+      const formDataToSend = { ...formData };
+      
+      formDataToSend.fecha_salida = formDataToSend.fecha_salida + tzOffset;
+      formDataToSend.fecha_retorno = formDataToSend.fecha_retorno + tzOffset;
+
       if (isPagoCompleto) {
         formDataToSend.reserva_inicial = formData.monto_total || 0;
         formDataToSend.abonos = 0;
