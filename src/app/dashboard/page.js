@@ -747,6 +747,8 @@ export default function AgenciaApp() {
     (isPagoCompleto || (!isNaN(parseFloat(formData.reserva_inicial)) && parseFloat(formData.reserva_inicial) >= 0 && !isNaN(parseFloat(formData.restante_por_pagar)) && parseFloat(formData.restante_por_pagar) >= 0)) &&
     (parseInt(formData.cantidad_pax) <= 1 || acompanantesList.every(ac => ac.nombre.trim() !== '' && ac.apellido.trim() !== '' && (!ac.isMenor || (ac.edad.trim() !== '' && parseInt(ac.edad) >= 0)) && (ac.isMenor || (ac.cedula && ac.cedula.trim() !== ''))));
 
+  const todayLocal = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16);
+
   return (
     <>
       <div style={{display: 'flex', justifyContent: 'flex-start', marginBottom: '1.5rem'}}>
@@ -777,11 +779,11 @@ export default function AgenciaApp() {
             
             <div className="input-group">
               <label>Fecha y Hora de Salida</label>
-              <input name="fecha_salida" type="datetime-local" required value={formData.fecha_salida} onChange={handleChange}/>
+              <input name="fecha_salida" type="datetime-local" min={todayLocal} required value={formData.fecha_salida} onChange={handleChange}/>
             </div>
             <div className="input-group">
               <label>Fecha y Hora de Retorno</label>
-              <input name="fecha_retorno" type="datetime-local" required value={formData.fecha_retorno} onChange={handleChange}/>
+              <input name="fecha_retorno" type="datetime-local" min={formData.fecha_salida || todayLocal} required value={formData.fecha_retorno} onChange={handleChange}/>
             </div>
             <div className="input-group">
               <label>Nombre</label>
