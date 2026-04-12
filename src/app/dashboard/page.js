@@ -509,7 +509,7 @@ export default function AgenciaApp() {
       doc.setFont("helvetica", "normal")
       doc.setFontSize(9)
       doc.text(`Fecha de Emisión: ${new Date().toLocaleString('es-VE')}`, 14, 75)
-      doc.text(`Cédula Titular: V-${clientData.cedula}   |   Edad: ${clientData.edad || 'N/A'} años`, 14, 82)
+      doc.text(`Cédula Titular: V-${clientData.cedula}`, 14, 82)
       doc.text(`Nombre Titular: ${clientData.nombre} ${clientData.apellido}`, 14, 89)
       doc.text(`Destino: ${clientData.destino}`, 14, 96)
       
@@ -526,7 +526,7 @@ export default function AgenciaApp() {
 
       const paxCount = clientData.cantidad_pax || 1;
       
-      const textoLegal = `Los suscritos, ciudadano Yohan Ernesto Quintero García, de nacionalidad venezolana identificado con su cedula de identidad N° 22.812.760 director del servicio de turismo Beach Camp. C.A. y el (la) ${clientData.nombre} ${clientData.apellido}, V-${clientData.cedula} (Edad: ${clientData.edad || 'N/A'} años) nacionalidad VENEZOLANA postulante a ser participante del itinerario hacia ${clientData.destino} con salida programada para el ${fSalidaStr} y retorno el ${fRetornoStr}, asume el compromiso adquirido que se detalla a continuación:`;
+      const textoLegal = `Los suscritos, ciudadano Yohan Ernesto Quintero García, de nacionalidad venezolana identificado con su cedula de identidad N° 22.812.760 director del servicio de turismo Beach Camp. C.A. y el (la) ${clientData.nombre} ${clientData.apellido}, V-${clientData.cedula} de nacionalidad VENEZOLANA postulante a ser participante del itinerario hacia ${clientData.destino} con salida programada para el ${fSalidaStr} y retorno el ${fRetornoStr}, asume el compromiso adquirido que se detalla a continuación:`;
       
       const finalLines = doc.splitTextToSize(textoLegal, 180);
       doc.text(finalLines, 14, 116)
@@ -551,7 +551,7 @@ export default function AgenciaApp() {
       
       doc.setFont("helvetica", "normal")
       const acompanantesL = clientData.acompanantes ? clientData.acompanantes.split(' | ') : [];
-      let totalPaxList = [`1-${clientData.nombre} ${clientData.apellido} V-${clientData.cedula} [Edad: ${clientData.edad || 'N/A'}]`];
+      let totalPaxList = [`1-${clientData.nombre} ${clientData.apellido} V-${clientData.cedula}`];
       acompanantesL.forEach((ac, idx) => totalPaxList.push(`${idx+2}-${ac}`));
 
       totalPaxList.forEach((line, index) => {
@@ -594,7 +594,7 @@ export default function AgenciaApp() {
 
     doc.setFontSize(9)
     doc.setFont("helvetica", "bold")
-    doc.text(`${clientData.nombre} ${clientData.apellido}, V-${clientData.cedula} [Edad: ${clientData.edad || 'N/A'}]`, 12, boxY + 10)
+    doc.text(`${clientData.nombre} ${clientData.apellido}, V-${clientData.cedula}`, 12, boxY + 10)
     
     doc.setFontSize(14)
     doc.text("Pagado a:", 90, boxY + 10)
@@ -616,7 +616,7 @@ export default function AgenciaApp() {
     let yPax = boxY + 50 + (noteLines.length * 5);
     
     const acompanantesL = clientData.acompanantes ? clientData.acompanantes.split(' | ') : [];
-    let totalPaxList2 = [`1-${clientData.nombre} ${clientData.apellido} V-${clientData.cedula} [Edad: ${clientData.edad || 'N/A'}]`];
+    let totalPaxList2 = [`1-${clientData.nombre} ${clientData.apellido} V-${clientData.cedula}`];
     acompanantesL.forEach((ac, idx) => totalPaxList2.push(`${idx+2}-${ac}`));
 
     totalPaxList2.forEach((line, index) => {
