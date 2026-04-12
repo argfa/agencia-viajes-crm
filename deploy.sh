@@ -61,7 +61,6 @@ ALTER TABLE ClientRecord ADD COLUMN fecha_retorno DATETIME DEFAULT CURRENT_TIMES
 UPDATE ClientRecord SET fecha_retorno = fecha_salida;
 ALTER TABLE ClientRecord ADD COLUMN edad INTEGER;
 EOF
-fi
 
 echo "==> Generando motor de base de datos..."
 npx prisma generate
