@@ -744,7 +744,7 @@ export default function AgenciaApp() {
     parseInt(formData.cantidad_pax) >= 1 &&
     formData.vendedor.trim() !== '' &&
     !isNaN(parseFloat(formData.monto_total)) && parseFloat(formData.monto_total) > 0 &&
-    (isPagoCompleto || (!isNaN(parseFloat(formData.reserva_inicial)) && parseFloat(formData.reserva_inicial) >= 0)) &&
+    (isPagoCompleto || (!isNaN(parseFloat(formData.reserva_inicial)) && parseFloat(formData.reserva_inicial) >= 0 && !isNaN(parseFloat(formData.restante_por_pagar)) && parseFloat(formData.restante_por_pagar) >= 0)) &&
     (parseInt(formData.cantidad_pax) <= 1 || acompanantesList.every(ac => ac.nombre.trim() !== '' && ac.apellido.trim() !== '' && (!ac.isMenor || (ac.edad.trim() !== '' && parseInt(ac.edad) >= 0)) && (ac.isMenor || (ac.cedula && ac.cedula.trim() !== ''))));
 
   return (
