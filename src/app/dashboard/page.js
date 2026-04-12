@@ -747,7 +747,10 @@ export default function AgenciaApp() {
     (isPagoCompleto || (!isNaN(parseFloat(formData.reserva_inicial)) && parseFloat(formData.reserva_inicial) >= 0 && !isNaN(parseFloat(formData.restante_por_pagar)) && parseFloat(formData.restante_por_pagar) >= 0)) &&
     (parseInt(formData.cantidad_pax) <= 1 || acompanantesList.every(ac => ac.nombre.trim() !== '' && ac.apellido.trim() !== '' && (!ac.isMenor || (ac.edad.trim() !== '' && parseInt(ac.edad) >= 0)) && (ac.isMenor || (ac.cedula && ac.cedula.trim() !== ''))));
 
-  const todayLocal = new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0,16);
+  const [todayLocal, setTodayLocal] = useState('');
+  useEffect(() => {
+    setTodayLocal(new Date(new Date().getTime() - new Date().getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+  }, []);
 
   return (
     <>
